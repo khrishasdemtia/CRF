@@ -1,318 +1,258 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>WLR Broadcast</title>
-  <!-- Bootstrap CSS -->
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
-  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3499331120756438"
-     crossorigin="anonymous"></script>
-  <style>
-    body {
-      background-color: #000;
-      color: #ff0000;
-      font-family: 'Unbounded', sans-serif;
-      height: 100vh;
-      display: flex;
-      flex-direction: column;
-      margin: 0;
-    }
-    header {
-      letter-spacing: 0.15em;
-      font-weight: 700;
-      font-size: 1.5rem;
-      text-align: center;
-      padding: 0.75rem 0;
-      border-bottom: 2px solid #ff0000;
-      text-shadow: 0 0 5px #ff0000;
-    }
-    #videoWrapper {
-      flex-grow: 1;
-      position: relative;
-      background: #000;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      overflow: hidden;
-    }
-    #remoteVideo {
-      width: 50%;
-      height: 100%;
-      object-fit: cover;
-      filter: contrast(1.2) brightness(1.1) grayscale(20%);
-      background: #111;
-    }
-    #localVideo {
-      position: absolute;
-      bottom: 1rem;
-      right: 1rem;
-      width: 30%;
-      max-width: 160px;
-      border: 2px solid #ff0000;
-      border-radius: 0.375rem;
-      opacity: 0.85;
-      box-shadow: 0 0 15px #ff0000;
-      filter: grayscale(40%);
-    }
-    #statusBar {
-      background: #000;
-      border-top: 2px solid #ff0000;
-      color: #ff0000;
-      font-weight: 700;
-      font-size: 0.9rem;
-      padding: 0.5rem 1rem;
-    }
-    #statusBar .d-flex > div {
-      text-shadow: 0 0 4px #ff0000;
-    }
-    button {
-      border-color: #ff0000;
-      color: #ff0000;
-      font-weight: 700;
-      letter-spacing: 1px;
-      text-transform: uppercase;
-      transition: background-color 0.3s, color 0.3s;
-    }
-    button:hover:not(:disabled) {
-      background-color: #ff0000;
-      color: #000;
-      box-shadow: 0 0 10px #ff0000;
-    }
-    button:disabled {
-      opacity: 0.3;
-      cursor: not-allowed;
-    }
-  </style>
-  <script src="/socket.io/socket.io.js"></script>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>WLR Broadcast</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+<style>
+body {
+  background-color: #000;
+  color: #ff0000;
+  font-family: 'Unbounded', sans-serif;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+}
+header {
+  letter-spacing: 0.15em;
+  font-weight: 700;
+  font-size: 1.5rem;
+  text-align: center;
+  padding: 0.75rem 0;
+  border-bottom: 2px solid #ff0000;
+  text-shadow: 0 0 5px #ff0000;
+}
+#videoWrapper {
+  flex-grow: 1;
+  position: relative;
+  background: #000;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  overflow: hidden;
+}
+#remoteVideo {
+  width: 50%;
+  height: 100%;
+  object-fit: cover;
+  filter: contrast(1.2) brightness(1.1) grayscale(20%);
+  background: #111;
+}
+#localVideo {
+  position: absolute;
+  bottom: 1rem;
+  right: 1rem;
+  width: 30%;
+  max-width: 160px;
+  border: 2px solid #ff0000;
+  border-radius: 0.375rem;
+  opacity: 0.85;
+  box-shadow: 0 0 15px #ff0000;
+  filter: grayscale(40%);
+}
+#statusBar {
+  background: #000;
+  border-top: 2px solid #ff0000;
+  color: #ff0000;
+  font-weight: 700;
+  font-size: 0.9rem;
+  padding: 0.5rem 1rem;
+}
+#statusBar .d-flex > div {
+  text-shadow: 0 0 4px #ff0000;
+}
+button {
+  border-color: #ff0000;
+  color: #ff0000;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  transition: background-color 0.3s, color 0.3s;
+}
+button:hover:not(:disabled) {
+  background-color: #ff0000;
+  color: #000;
+  box-shadow: 0 0 10px #ff0000;
+}
+button:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+#aiChecker {
+  text-align: center;
+  margin: 1rem auto;
+}
+#aiInput {
+  width: 60%;
+  display: inline-block;
+}
+#aiResult {
+  margin-top: 0.5rem;
+  font-weight: 700;
+  color: #ff0;
+}
+</style>
+<script src="/socket.io/socket.io.js"></script>
 </head>
 <body>
 
-  <header>LIVE:</header>
+<header>LIVE:</header>
 
-  <div id="videoWrapper">
-    <video id="remoteVideo" autoplay playsinline></video>
-    <video id="localVideo" autoplay muted playsinline></video>
-  </div>
+<div id="videoWrapper">
+  <video id="remoteVideo" autoplay playsinline></video>
+  <video id="localVideo" autoplay muted playsinline></video>
+</div>
 
-  <div class="text-center my-2">
-    <button id="skipBtn" class="btn btn-outline-danger" disabled>Skip</button>
-  </div>
+<div class="text-center my-2">
+  <button id="skipBtn" class="btn btn-outline-danger" disabled>Skip</button>
+</div>
 
-  <div id="statusBar" class="d-flex justify-content-between align-items-center">
-    <div id="status">WAITING FOR SOMEONE TO TAP IN...</div>
-    <div id="queue" class="fst-italic opacity-75">Queue: 0</div>
-  </div>
+<div id="statusBar" class="d-flex justify-content-between align-items-center">
+  <div id="status">WAITING FOR SOMEONE TO TAP IN...</div>
+  <div id="queue" class="fst-italic opacity-75">Queue: 0</div>
+</div>
 
-  <!-- Tip UI -->
-  <div class="text-center my-2">
-    <input id="tipAmount" type="number" min="1" value="5" style="width:70px;" class="form-control d-inline-block" />
-    <button id="tipBtn" class="btn btn-outline-warning" disabled>Send Tip</button>
-  </div>
+<!-- Tip UI -->
+<div class="text-center my-2">
+  <input id="tipAmount" type="number" min="1" value="5" style="width:70px;" class="form-control d-inline-block" />
+  <button id="tipBtn" class="btn btn-outline-warning" disabled>Send Tip</button>
+</div>
 
-  <!-- Tip Banner -->
+<!-- Tip Banner -->
 <div id="tip-banner" style="display:none;position:fixed;top:80px;left:50%;transform:translateX(-50%);background:#28a745;color:#fff;padding:1rem 2rem;border-radius:8px;z-index:20000;box-shadow:0 2px 8px #000;font-weight:600;"></div>
-<script>
-  // Show "You tipped!" banner when you click the tip button
-  tipBtn.addEventListener('click', () => {
-    const amount = parseInt(tipAmount.value, 10);
-    if (currentRoom && amount > 0) {
-      // Show banner
-      const banner = document.getElementById('tip-banner');
-      banner.innerText = '🎉 You tipped!';
-      banner.style.display = 'block';
-      setTimeout(() => {
-        banner.style.display = 'none';
-      }, 3000);
-    }
-  });
-</script>
 
-  <script>
-    const socket = io();
-    let localStream;
-    let peerConnection;
-    let currentRoom = null;
-
-    const config = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
-    const localVideo = document.getElementById('localVideo');
-    const remoteVideo = document.getElementById('remoteVideo');
-    const skipBtn = document.getElementById('skipBtn');
-    const statusText = document.getElementById('status');
-    const queueText = document.getElementById('queue');
-    const tipBtn = document.getElementById('tipBtn');
-    const tipAmount = document.getElementById('tipAmount');
-
-    navigator.mediaDevices.getUserMedia({ video: true, audio: true })
-      .then(stream => {
-        localStream = stream;
-        localVideo.srcObject = stream;
-        socket.emit('ready');
-      })
-      .catch(err => alert('Camera/mic error: ' + err));
-
-    socket.on('connect', () => {
-      console.log('Connected as:', socket.id);
-    });
-
-    socket.on('match', ({ room, initiator }) => {
-      currentRoom = room;
-      statusText.innerText = 'CONNECTED — STAY LIVE.';
-      skipBtn.disabled = false;
-      tipBtn.disabled = false;
-      startPeerConnection(initiator);
-    });
-
-    socket.on('signal', async data => {
-      if (!peerConnection) return;
-      try {
-        if (data.type === 'offer') {
-          await peerConnection.setRemoteDescription(new RTCSessionDescription(data));
-          const answer = await peerConnection.createAnswer();
-          await peerConnection.setLocalDescription(answer);
-          socket.emit('signal', { room: currentRoom, data: peerConnection.localDescription });
-        } else if (data.type === 'answer') {
-          await peerConnection.setRemoteDescription(new RTCSessionDescription(data));
-        } else if (data.candidate) {
-          await peerConnection.addIceCandidate(new RTCIceCandidate(data.candidate));
-        }
-      } catch (e) {
-        console.error('Signal error:', e);
-      }
-    });
-
-    socket.on('queueStatus', ({ queueLength }) => {
-      queueText.innerText = `Queue: ${queueLength}`;
-    });
-
-    socket.on('skip', () => {
-      if (peerConnection) {
-        peerConnection.close();
-        peerConnection = null;
-      }
-      remoteVideo.srcObject = null;
-      skipBtn.disabled = true;
-      tipBtn.disabled = true;
-      statusText.innerText = 'WAITING FOR SOMEONE TO TAP IN...';
-    });
-
-    socket.on('disconnect', () => {
-      tipBtn.disabled = true;
-    });
-
-    function startPeerConnection(initiator) {
-      peerConnection = new RTCPeerConnection(config);
-      localStream.getTracks().forEach(track => {
-        peerConnection.addTrack(track, localStream);
-      });
-
-      peerConnection.onicecandidate = event => {
-        if (event.candidate) {
-          socket.emit('signal', { room: currentRoom, data: { candidate: event.candidate } });
-        }
-      };
-
-      const remoteStream = new MediaStream();
-      remoteVideo.srcObject = remoteStream;
-
-      peerConnection.ontrack = event => {
-        remoteStream.addTrack(event.track);
-      };
-
-      if (initiator) {
-        peerConnection.createOffer()
-          .then(offer => peerConnection.setLocalDescription(offer))
-          .then(() => {
-            socket.emit('signal', { room: currentRoom, data: peerConnection.localDescription });
-          });
-      }
-    }
-
-    skipBtn.addEventListener('click', () => {
-      if (peerConnection) {
-        peerConnection.close();
-        peerConnection = null;
-      }
-      remoteVideo.srcObject = null;
-      skipBtn.disabled = true;
-      statusText.innerText = 'WAITING FOR A NEW MATCH...';
-      socket.emit('skip', { room: currentRoom });
-      currentRoom = null;
-    });
-
-    // Send tip
-    tipBtn.addEventListener('click', () => {
-      const amount = parseInt(tipAmount.value, 10);
-      if (currentRoom && amount > 0) {
-        socket.emit('tip', { room: currentRoom, amount });
-      }
-    });
-
-    // Receive tip
-    socket.on('tip', ({ from, amount }) => {
-      alert(`You received a tip of $${amount}!`);
-    });
-
-    // Redirect to index.html on successful response
-    fetch('/some-endpoint')
-      .then(res => {
-        if (res.ok) {
-          window.location.href = '/index.html';
-        }
-      })
-      .catch(err => console.error('Fetch error:', err));
-  </script>
-  <!-- Bootstrap Bundle JS (includes Popper) -->
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-  <!-- Consent Banner for Ads -->
-<div id="consent-banner" style="position:fixed;bottom:0;left:0;width:100%;background:#222;color:#fff;padding:1rem;display:none;z-index:9999;box-shadow:0 -2px 8px #000;">
-  <div class="container d-flex flex-column flex-md-row align-items-center justify-content-between">
-    <span>
-      This site uses cookies and may show ads to support our service. By continuing, you consent to personalized ads and cookies.
-    </span>
-    <div class="mt-2 mt-md-0">
-      <button id="consent-accept" class="btn btn-success btn-sm me-2">Accept</button>
-      <button id="consent-decline" class="btn btn-secondary btn-sm">Decline</button>
-    </div>
-  </div>
+<!-- AI Checker -->
+<div id="aiChecker">
+  <input type="text" id="aiInput" placeholder="Enter text to check" class="form-control d-inline-block" />
+  <button id="aiCheckBtn" class="btn btn-outline-info">Check AI</button>
+  <div id="aiResult"></div>
 </div>
+
 <script>
-  // Consent Banner Logic
-  function showConsentBanner() {
-    if (!localStorage.getItem('adsConsent')) {
-      document.getElementById('consent-banner').style.display = 'block';
-    }
+const socket = io();
+let localStream;
+let peerConnection;
+let currentRoom = null;
+
+const localVideo = document.getElementById('localVideo');
+const remoteVideo = document.getElementById('remoteVideo');
+const skipBtn = document.getElementById('skipBtn');
+const statusText = document.getElementById('status');
+const queueText = document.getElementById('queue');
+const tipBtn = document.getElementById('tipBtn');
+const tipAmount = document.getElementById('tipAmount');
+const tipBanner = document.getElementById('tip-banner');
+
+navigator.mediaDevices.getUserMedia({ video: true, audio: true })
+.then(stream => {
+  localStream = stream;
+  localVideo.srcObject = stream;
+  socket.emit('ready');
+})
+.catch(err => alert('Camera/mic error: ' + err));
+
+// Tip button logic
+tipBtn.addEventListener('click', () => {
+  const amount = parseInt(tipAmount.value, 10);
+  if (currentRoom && amount > 0) {
+    tipBanner.innerText = `🎉 You tipped $${amount}!`;
+    tipBanner.style.display = 'block';
+    setTimeout(() => tipBanner.style.display = 'none', 3000);
+    socket.emit('tip', { room: currentRoom, amount });
   }
-  document.getElementById('consent-accept').onclick = function() {
-    localStorage.setItem('adsConsent', 'accepted');
-    document.getElementById('consent-banner').style.display = 'none';
-    // TODO: Initialize ads here
+});
+
+// AI Checker logic
+const aiInput = document.getElementById('aiInput');
+const aiCheckBtn = document.getElementById('aiCheckBtn');
+const aiResult = document.getElementById('aiResult');
+
+function detectAI(text) {
+  const aiPhrases = ["As an AI language model", "I cannot provide", "I am unable"];
+  let score = 0;
+  aiPhrases.forEach(phrase => { if (text.includes(phrase)) score++; });
+  return score > 0 ? "⚠️ Likely AI-generated" : "✅ Likely Human-written";
+}
+
+aiCheckBtn.addEventListener('click', () => {
+  const text = aiInput.value.trim();
+  if (!text) {
+    aiResult.innerText = "Please enter some text.";
+    return;
+  }
+  aiResult.innerText = detectAI(text);
+});
+
+// Skip logic
+skipBtn.addEventListener('click', () => {
+  if (peerConnection) peerConnection.close();
+  peerConnection = null;
+  remoteVideo.srcObject = null;
+  skipBtn.disabled = true;
+  tipBtn.disabled = true;
+  statusText.innerText = 'WAITING FOR A NEW MATCH...';
+  socket.emit('skip', { room: currentRoom });
+  currentRoom = null;
+});
+
+// PeerConnection & Socket.io
+function startPeerConnection(initiator) {
+  peerConnection = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
+  localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
+
+  const remoteStream = new MediaStream();
+  remoteVideo.srcObject = remoteStream;
+  peerConnection.ontrack = e => remoteStream.addTrack(e.track);
+
+  peerConnection.onicecandidate = e => {
+    if (e.candidate) socket.emit('signal', { room: currentRoom, data: { candidate: e.candidate } });
   };
-  document.getElementById('consent-decline').onclick = function() {
-    localStorage.setItem('adsConsent', 'declined');
-    document.getElementById('consent-banner').style.display = 'none';
-    // TODO: Do not show ads
-  };
-  showConsentBanner();
-  
+
+  if (initiator) {
+    peerConnection.createOffer()
+      .then(offer => peerConnection.setLocalDescription(offer))
+      .then(() => socket.emit('signal', { room: currentRoom, data: peerConnection.localDescription }));
+  }
+}
+
+// Socket events
+socket.on('connect', () => console.log('Connected as:', socket.id));
+socket.on('match', ({ room, initiator }) => {
+  currentRoom = room;
+  statusText.innerText = 'CONNECTED — STAY LIVE.';
+  skipBtn.disabled = false;
+  tipBtn.disabled = false;
+  startPeerConnection(initiator);
+});
+socket.on('signal', async data => {
+  if (!peerConnection) return;
+  try {
+    if (data.type === 'offer') {
+      await peerConnection.setRemoteDescription(new RTCSessionDescription(data));
+      const answer = await peerConnection.createAnswer();
+      await peerConnection.setLocalDescription(answer);
+      socket.emit('signal', { room: currentRoom, data: peerConnection.localDescription });
+    } else if (data.type === 'answer') {
+      await peerConnection.setRemoteDescription(new RTCSessionDescription(data));
+    } else if (data.candidate) {
+      await peerConnection.addIceCandidate(new RTCIceCandidate(data.candidate));
+    }
+  } catch(e) { console.error(e); }
+});
+socket.on('queueStatus', ({ queueLength }) => queueText.innerText = `Queue: ${queueLength}`);
+socket.on('skip', () => {
+  if (peerConnection) peerConnection.close();
+  peerConnection = null;
+  remoteVideo.srcObject = null;
+  skipBtn.disabled = true;
+  tipBtn.disabled = true;
+  statusText.innerText = 'WAITING FOR SOMEONE TO TAP IN...';
+});
+socket.on('tip', ({ amount }) => alert(`You received a tip of $${amount}!`));
 </script>
-   <!-- Free Tip Banner -->
-<div id="free-tip-banner" style="width:100%;background:#ffc107;color:#222;padding:.75rem 1rem;text-align:center;position:fixed;top:0;left:0;z-index:10000;box-shadow:0 2px 8px #000;">
-  <span style="font-weight:600;">Enjoying the broadcast?</span>
-  <button id="freeTipBtn" class="btn btn-sm btn-success ms-2">Send a Free Tip!</button>
-  <button id="closeFreeTip" class="btn btn-sm btn-outline-dark ms-2">×</button>
-</div>
-<script>
-  // Hide banner on close
-  document.getElementById('closeFreeTip').onclick = function() {
-    document.getElementById('free-tip-banner').style.display = 'none';
-  };
-  // Handle free tip button (customize as needed)
-  document.getElementById('freeTipBtn').onclick = function() {
-    alert('Thank you for your support! (This is a free tip)');
-    document.getElementById('free-tip-banner').style.display = 'none';
-    // TODO: Optionally send a "free tip" event to your server here
-  };
-</script>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
