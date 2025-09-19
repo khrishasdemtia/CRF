@@ -9,6 +9,43 @@
   <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3499331120756438"
      crossorigin="anonymous"></script>
   <style>
+    <!-- TensorFlow + BlazeFace -->
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.20.0"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/blazeface"></script>
+
+<script>
+  let faceModel;
+  let aiCheckPassed = false;
+
+  async function loadFaceModel() {
+    faceModel = await blazeface.load();
+    console.log("✅ AI Model loaded");
+  }
+
+  // Check if a face is detected on the local video
+  async function checkWebcamFrame() {
+    if (!faceModel || !localVideo.srcObject) return;
+
+    const predictions = await faceModel.estimateFaces(localVideo, false);
+
+    if (predictions.length > 0) {
+      aiCheckPassed = true;
+      statusText.innerText = "✅ Face detected — Ready";
+      statusText.style.color = "#28a745"; // green
+    } else {
+      aiCheckPassed = false;
+      statusText.innerText = "⚠️ No face detected!";
+      statusText.style.color = "#ffc107"; // yellow
+    }
+  }
+
+  // Periodically check webcam
+  setInterval(checkWebcamFrame, 2000);
+
+  // Load model when page starts
+  loadFaceModel();
+</script>
+
     body {
       background-color: #000;
       color: #ff0000;
@@ -316,3 +353,4 @@
 </script>
 </body>
 </html>
+
