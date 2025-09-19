@@ -142,6 +142,32 @@
     const queueText = document.getElementById('queue');
     const tipBtn = document.getElementById('tipBtn');
     const tipAmount = document.getElementById('tipAmount');
+  const aiCheckBtn = document.getElementById('aiCheckBtn');
+  const aiCheckInput = document.getElementById('aiCheckInput');
+  const aiCheckResult = document.getElementById('aiCheckResult');
+
+  // Example: dummy AI checker logic
+  function detectAI(text) {
+    // Replace this with a real detector library call
+    // For demonstration, we just check for GPT-style phrases
+    const aiPhrases = ["As an AI language model", "I cannot provide", "I am unable"];
+    let score = 0;
+    aiPhrases.forEach(phrase => {
+      if (text.includes(phrase)) score++;
+    });
+    return score > 0 ? "⚠️ Likely AI-generated" : "✅ Likely Human-written";
+  }
+
+  aiCheckBtn.addEventListener('click', () => {
+    const text = aiCheckInput.value.trim();
+    if (!text) {
+      aiCheckResult.innerText = "Please enter some text.";
+      return;
+    }
+    const result = detectAI(text);
+    aiCheckResult.innerText = result;
+  });
+
 
     navigator.mediaDevices.getUserMedia({ video: true, audio: true })
       .then(stream => {
@@ -316,3 +342,4 @@
 </script>
 </body>
 </html>
+
