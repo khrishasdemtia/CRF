@@ -85,6 +85,9 @@
     }
   </style>
   <script src="/socket.io/socket.io.js"></script>
+  <!-- TensorFlow.js + BlazeFace -->
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.20.0"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/blazeface"></script>
 </head>
 <body>
 
@@ -112,159 +115,176 @@
 
   <!-- Tip Banner -->
 <div id="tip-banner" style="display:none;position:fixed;top:80px;left:50%;transform:translateX(-50%);background:#28a745;color:#fff;padding:1rem 2rem;border-radius:8px;z-index:20000;box-shadow:0 2px 8px #000;font-weight:600;"></div>
+
 <script>
-  // Show "You tipped!" banner when you click the tip button
+  const socket = io();
+  let localStream;
+  let peerConnection;
+  let currentRoom = null;
+
+  const config = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
+  const localVideo = document.getElementById('localVideo');
+  const remoteVideo = document.getElementById('remoteVideo');
+  const skipBtn = document.getElementById('skipBtn');
+  const statusText = document.getElementById('status');
+  const queueText = document.getElementById('queue');
+  const tipBtn = document.getElementById('tipBtn');
+  const tipAmount = document.getElementById('tipAmount');
+
+  // --- Webcam + AI ---
+  let faceModel;
+  let aiCheckPassed = false;
+
+  async function loadFaceModel() {
+    faceModel = await blazeface.load();
+    console.log("✅ Face detection model loaded");
+  }
+
+  async function checkWebcamFrame() {
+    if (!faceModel || !localVideo.srcObject) return;
+    const predictions = await faceModel.estimateFaces(localVideo, false);
+    if (predictions.length > 0) {
+      aiCheckPassed = true;
+      statusText.innerText = "✅ Face detected — Ready";
+      statusText.style.color = "#28a745";
+    } else {
+      aiCheckPassed = false;
+      statusText.innerText = "⚠️ No face detected!";
+      statusText.style.color = "#ffc107";
+    }
+  }
+  setInterval(checkWebcamFrame, 2000);
+  loadFaceModel();
+
+  // --- Normal setup ---
+  navigator.mediaDevices.getUserMedia({ video: true, audio: true })
+    .then(stream => {
+      localStream = stream;
+      localVideo.srcObject = stream;
+      socket.emit('ready');
+    })
+    .catch(err => alert('Camera/mic error: ' + err));
+
+  socket.on('connect', () => {
+    console.log('Connected as:', socket.id);
+  });
+
+  socket.on('match', ({ room, initiator }) => {
+    currentRoom = room;
+    statusText.innerText = 'CONNECTED — STAY LIVE.';
+    skipBtn.disabled = false;
+    tipBtn.disabled = false;
+    startPeerConnection(initiator);
+  });
+
+  socket.on('signal', async data => {
+    if (!peerConnection) return;
+    try {
+      if (data.type === 'offer') {
+        await peerConnection.setRemoteDescription(new RTCSessionDescription(data));
+        const answer = await peerConnection.createAnswer();
+        await peerConnection.setLocalDescription(answer);
+        socket.emit('signal', { room: currentRoom, data: peerConnection.localDescription });
+      } else if (data.type === 'answer') {
+        await peerConnection.setRemoteDescription(new RTCSessionDescription(data));
+      } else if (data.candidate) {
+        await peerConnection.addIceCandidate(new RTCIceCandidate(data.candidate));
+      }
+    } catch (e) {
+      console.error('Signal error:', e);
+    }
+  });
+
+  socket.on('queueStatus', ({ queueLength }) => {
+    queueText.innerText = `Queue: ${queueLength}`;
+  });
+
+  socket.on('skip', () => {
+    if (peerConnection) {
+      peerConnection.close();
+      peerConnection = null;
+    }
+    remoteVideo.srcObject = null;
+    skipBtn.disabled = true;
+    tipBtn.disabled = true;
+    statusText.innerText = 'WAITING FOR SOMEONE TO TAP IN...';
+  });
+
+  socket.on('disconnect', () => {
+    tipBtn.disabled = true;
+  });
+
+  function startPeerConnection(initiator) {
+    peerConnection = new RTCPeerConnection(config);
+    localStream.getTracks().forEach(track => {
+      peerConnection.addTrack(track, localStream);
+    });
+
+    peerConnection.onicecandidate = event => {
+      if (event.candidate) {
+        socket.emit('signal', { room: currentRoom, data: { candidate: event.candidate } });
+      }
+    };
+
+    const remoteStream = new MediaStream();
+    remoteVideo.srcObject = remoteStream;
+
+    peerConnection.ontrack = event => {
+      remoteStream.addTrack(event.track);
+    };
+
+    if (initiator) {
+      peerConnection.createOffer()
+        .then(offer => peerConnection.setLocalDescription(offer))
+        .then(() => {
+          socket.emit('signal', { room: currentRoom, data: peerConnection.localDescription });
+        });
+    }
+  }
+
+  skipBtn.addEventListener('click', () => {
+    if (peerConnection) {
+      peerConnection.close();
+      peerConnection = null;
+    }
+    remoteVideo.srcObject = null;
+    skipBtn.disabled = true;
+    statusText.innerText = 'WAITING FOR A NEW MATCH...';
+    socket.emit('skip', { room: currentRoom });
+    currentRoom = null;
+  });
+
+  // Tip button
   tipBtn.addEventListener('click', () => {
     const amount = parseInt(tipAmount.value, 10);
     if (currentRoom && amount > 0) {
-      // Show banner
+      socket.emit('tip', { room: currentRoom, amount });
       const banner = document.getElementById('tip-banner');
       banner.innerText = '🎉 You tipped!';
       banner.style.display = 'block';
-      setTimeout(() => {
-        banner.style.display = 'none';
-      }, 3000);
+      setTimeout(() => { banner.style.display = 'none'; }, 3000);
     }
   });
+
+  // Receive tip
+  socket.on('tip', ({ from, amount }) => {
+    alert(`You received a tip of $${amount}!`);
+  });
+
+  // Redirect to index.html on successful response
+  fetch('/some-endpoint')
+    .then(res => {
+      if (res.ok) {
+        window.location.href = '/index.html';
+      }
+    })
+    .catch(err => console.error('Fetch error:', err));
 </script>
 
-  <script>
-    const socket = io();
-    let localStream;
-    let peerConnection;
-    let currentRoom = null;
+<!-- Bootstrap Bundle JS (includes Popper) -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
-    const config = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
-    const localVideo = document.getElementById('localVideo');
-    const remoteVideo = document.getElementById('remoteVideo');
-    const skipBtn = document.getElementById('skipBtn');
-    const statusText = document.getElementById('status');
-    const queueText = document.getElementById('queue');
-    const tipBtn = document.getElementById('tipBtn');
-    const tipAmount = document.getElementById('tipAmount');
-
-    navigator.mediaDevices.getUserMedia({ video: true, audio: true })
-      .then(stream => {
-        localStream = stream;
-        localVideo.srcObject = stream;
-        socket.emit('ready');
-      })
-      .catch(err => alert('Camera/mic error: ' + err));
-
-    socket.on('connect', () => {
-      console.log('Connected as:', socket.id);
-    });
-
-    socket.on('match', ({ room, initiator }) => {
-      currentRoom = room;
-      statusText.innerText = 'CONNECTED — STAY LIVE.';
-      skipBtn.disabled = false;
-      tipBtn.disabled = false;
-      startPeerConnection(initiator);
-    });
-
-    socket.on('signal', async data => {
-      if (!peerConnection) return;
-      try {
-        if (data.type === 'offer') {
-          await peerConnection.setRemoteDescription(new RTCSessionDescription(data));
-          const answer = await peerConnection.createAnswer();
-          await peerConnection.setLocalDescription(answer);
-          socket.emit('signal', { room: currentRoom, data: peerConnection.localDescription });
-        } else if (data.type === 'answer') {
-          await peerConnection.setRemoteDescription(new RTCSessionDescription(data));
-        } else if (data.candidate) {
-          await peerConnection.addIceCandidate(new RTCIceCandidate(data.candidate));
-        }
-      } catch (e) {
-        console.error('Signal error:', e);
-      }
-    });
-
-    socket.on('queueStatus', ({ queueLength }) => {
-      queueText.innerText = `Queue: ${queueLength}`;
-    });
-
-    socket.on('skip', () => {
-      if (peerConnection) {
-        peerConnection.close();
-        peerConnection = null;
-      }
-      remoteVideo.srcObject = null;
-      skipBtn.disabled = true;
-      tipBtn.disabled = true;
-      statusText.innerText = 'WAITING FOR SOMEONE TO TAP IN...';
-    });
-
-    socket.on('disconnect', () => {
-      tipBtn.disabled = true;
-    });
-
-    function startPeerConnection(initiator) {
-      peerConnection = new RTCPeerConnection(config);
-      localStream.getTracks().forEach(track => {
-        peerConnection.addTrack(track, localStream);
-      });
-
-      peerConnection.onicecandidate = event => {
-        if (event.candidate) {
-          socket.emit('signal', { room: currentRoom, data: { candidate: event.candidate } });
-        }
-      };
-
-      const remoteStream = new MediaStream();
-      remoteVideo.srcObject = remoteStream;
-
-      peerConnection.ontrack = event => {
-        remoteStream.addTrack(event.track);
-      };
-
-      if (initiator) {
-        peerConnection.createOffer()
-          .then(offer => peerConnection.setLocalDescription(offer))
-          .then(() => {
-            socket.emit('signal', { room: currentRoom, data: peerConnection.localDescription });
-          });
-      }
-    }
-
-    skipBtn.addEventListener('click', () => {
-      if (peerConnection) {
-        peerConnection.close();
-        peerConnection = null;
-      }
-      remoteVideo.srcObject = null;
-      skipBtn.disabled = true;
-      statusText.innerText = 'WAITING FOR A NEW MATCH...';
-      socket.emit('skip', { room: currentRoom });
-      currentRoom = null;
-    });
-
-    // Send tip
-    tipBtn.addEventListener('click', () => {
-      const amount = parseInt(tipAmount.value, 10);
-      if (currentRoom && amount > 0) {
-        socket.emit('tip', { room: currentRoom, amount });
-      }
-    });
-
-    // Receive tip
-    socket.on('tip', ({ from, amount }) => {
-      alert(`You received a tip of $${amount}!`);
-    });
-
-    // Redirect to index.html on successful response
-    fetch('/some-endpoint')
-      .then(res => {
-        if (res.ok) {
-          window.location.href = '/index.html';
-        }
-      })
-      .catch(err => console.error('Fetch error:', err));
-  </script>
-  <!-- Bootstrap Bundle JS (includes Popper) -->
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-  <!-- Consent Banner for Ads -->
+<!-- Consent Banner for Ads -->
 <div id="consent-banner" style="position:fixed;bottom:0;left:0;width:100%;background:#222;color:#fff;padding:1rem;display:none;z-index:9999;box-shadow:0 -2px 8px #000;">
   <div class="container d-flex flex-column flex-md-row align-items-center justify-content-between">
     <span>
@@ -277,7 +297,6 @@
   </div>
 </div>
 <script>
-  // Consent Banner Logic
   function showConsentBanner() {
     if (!localStorage.getItem('adsConsent')) {
       document.getElementById('consent-banner').style.display = 'block';
@@ -286,32 +305,27 @@
   document.getElementById('consent-accept').onclick = function() {
     localStorage.setItem('adsConsent', 'accepted');
     document.getElementById('consent-banner').style.display = 'none';
-    // TODO: Initialize ads here
   };
   document.getElementById('consent-decline').onclick = function() {
     localStorage.setItem('adsConsent', 'declined');
     document.getElementById('consent-banner').style.display = 'none';
-    // TODO: Do not show ads
   };
   showConsentBanner();
-  
 </script>
-   <!-- Free Tip Banner -->
+
+<!-- Free Tip Banner -->
 <div id="free-tip-banner" style="width:100%;background:#ffc107;color:#222;padding:.75rem 1rem;text-align:center;position:fixed;top:0;left:0;z-index:10000;box-shadow:0 2px 8px #000;">
   <span style="font-weight:600;">Enjoying the broadcast?</span>
   <button id="freeTipBtn" class="btn btn-sm btn-success ms-2">Send a Free Tip!</button>
   <button id="closeFreeTip" class="btn btn-sm btn-outline-dark ms-2">×</button>
 </div>
 <script>
-  // Hide banner on close
   document.getElementById('closeFreeTip').onclick = function() {
     document.getElementById('free-tip-banner').style.display = 'none';
   };
-  // Handle free tip button (customize as needed)
   document.getElementById('freeTipBtn').onclick = function() {
     alert('Thank you for your support! (This is a free tip)');
     document.getElementById('free-tip-banner').style.display = 'none';
-    // TODO: Optionally send a "free tip" event to your server here
   };
 </script>
 </body>
