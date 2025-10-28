@@ -1,0 +1,9 @@
+body { margin: 0; padding: 0; height: 100vh; display: flex; justify-content: center; align-items: center; background-color: #fff; color: #000; font-family: 'Impact', 'Arial Black', sans-serif; text-transform: uppercase; letter-spacing: 2px; }
+
+.container { text-align: center; border: 5px solid #000; padding: 40px 60px; background-color: #fff; box-shadow: 10px 10px 0 #000; }
+
+h1 { font-size: 3rem; margin-bottom: 0.5rem; }
+
+p { font-size: 1.2rem; margin-top: 0; font-weight: bold; }
+
+/* Optional: graffiti-style hover effect */ .container:hover { transform: rotate(-1deg) scale(1.05); transition: 0.3s ease; box-shadow: 15px 15px 0 #000; }
