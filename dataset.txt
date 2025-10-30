@@ -1,1 +1,6 @@
 
+hello how are you
+i am fine thank you
+what are you doing
+i am building a small gpt model
+this is fun and exciting
